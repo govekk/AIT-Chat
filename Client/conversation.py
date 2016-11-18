@@ -1,8 +1,8 @@
 from message import Message
-import base64
 from time import sleep
 from threading import Thread
-#from crypto.cypher import AES
+
+from Crypto.Cipher import AES
 
 class Conversation:
     '''
@@ -123,8 +123,8 @@ class Conversation:
         '''
 
         # process message here
-		# example is base64 decoding, extend this with any crypto processing of your protocol
-        #AES.new()
+		# decode the message with AES
+        cipher = AES.new('This is a key', AES.MODE_CBC, 'This is an IV')
         decoded_msg = base64.decodestring(msg_raw)
 
         # print message and add it to the list of printed messages
@@ -151,8 +151,9 @@ class Conversation:
             self.printed_messages.append(m)
 
         # process outgoing message here
-		# example is base64 encoding, extend this with any crypto processing of your protocol
-        encoded_msg = base64.encodestring(msg_raw)
+		# encode the message with AES
+        cipher = AES.new('This is a key', AES.MODE_CBC, 'This is an IV')
+        encoded_msg = cipher.encrypt(msg_raw)
 
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
