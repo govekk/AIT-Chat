@@ -1,6 +1,7 @@
 # Connection to the chat server
 #SERVER      = '127.0.0.1'  # IP of the server
-SERVER = '192.168.0.129'
+#SERVER = '192.168.0.129'
+SERVER = '192.168.20.97'
 SERVER_PORT = '8888'          # port on which the server is running
 
 # Check for new messages in conversation every X seconds

@@ -2,7 +2,6 @@ from message import Message
 import base64
 from time import sleep
 from threading import Thread
-#from crypto.cypher import AES
 
 class Conversation:
     '''
@@ -124,7 +123,6 @@ class Conversation:
 
         # process message here
 		# example is base64 decoding, extend this with any crypto processing of your protocol
-        #AES.new()
         decoded_msg = base64.decodestring(msg_raw)
 
         # print message and add it to the list of printed messages

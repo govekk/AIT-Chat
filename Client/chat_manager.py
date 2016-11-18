@@ -77,7 +77,7 @@ class ChatManager:
             self.is_logged_in = False
         except urllib2.URLError as e:
             # Other kinds of errors related to the network
-            print "Unable to log in, reason:", e.message
+            print "Unable to log in, reason:", e.reason
             self.user_name = ""
             self.password = ""
             self.is_logged_in = False
