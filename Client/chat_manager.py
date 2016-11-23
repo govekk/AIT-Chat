@@ -9,7 +9,7 @@ from menu import menu
 
 from threading import Thread
 
-from Crypto.Cipher import AES
+import base64
 
 
 state = INIT  # initial state for the application
@@ -218,8 +218,8 @@ class ChatManager:
         while has_requested_messages is not True:
             sleep(0.01)
         try:
-            # Process outgoing message -- changes from base64 to AES
-            msg = Message(content=AES.encodestring(msg_raw),
+            # Process outgoing message 
+            msg = Message(content=base64.encodestring(msg_raw),
                           owner_name=self.user_name)
             # Send the message
             req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations/" +

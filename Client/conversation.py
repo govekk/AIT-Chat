@@ -2,7 +2,10 @@ from message import Message
 from time import sleep
 from threading import Thread
 from Crypto.Cipher import AES
+from Crypto import Random
+import base64
 
+key = Random.new().read(AES.block_size)
 class Conversation:
     '''
     Represents a conversation between participants
@@ -98,6 +101,7 @@ class Conversation:
         Prepares the conversation for usage
         :return:
         '''
+        
         # You can use this function to initiate your key exchange
 		# Useful stuff that you may need:
 		# - name of the current user: self.manager.user_name
@@ -124,8 +128,11 @@ class Conversation:
         # process message here
 		# example is base64 decoding, extend this with any crypto processing of your protocol
 		# decode the message with AES
-        cipher = AES.new('This is a key', AES.MODE_CBC, 'This is an IV')
-        decoded_msg = base64.decodestring(msg_raw)
+	iv = Random.new().read(AES.block_size)
+	global key
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        decoded_msg = cipher.decrypt(msg_raw)
+        decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
 
         # print message and add it to the list of printed messages
         self.print_message(
@@ -141,6 +148,10 @@ class Conversation:
         :return: message to be sent to the server
         '''
 
+        #TLS padding here
+        plength = AES.block_size - (len(msg_raw)%AES.block_size)
+        msg_raw += chr(plength)*plength
+        
         # if the message has been typed into the console, record it, so it is never printed again during chatting
         if originates_from_console == True:
             # message is already seen on the console
@@ -151,8 +162,10 @@ class Conversation:
             self.printed_messages.append(m)
 
         # process outgoing message here
-		# encode the message with AES
-        cipher = AES.new('This is a key', AES.MODE_CBC, 'This is an IV')
+		# encode the message with AES\
+	iv = Random.new().read(AES.block_size)
+	global key
+        cipher = AES.new(key, AES.MODE_CBC, iv)
         encoded_msg = cipher.encrypt(msg_raw)
 
         # post the message to the conversation
