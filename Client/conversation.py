@@ -6,6 +6,7 @@ from Crypto import Random
 from Crypto.PublicKey import RSA
 import base64
 
+state = CHAT;
 key = b'0123456789abcdef0123456789abcdef'
 class Conversation:
     '''
@@ -31,6 +32,22 @@ class Conversation:
         ) # message processing loop
         self.msg_process_loop.start()
         self.msg_process_loop_started = True
+        
+        
+        # Queries the server for the conversations of the current user (user is a participant)
+        req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations")
+        # Include Cookie
+        req.add_header("Cookie", self.manager.cookie)
+        r = urllib2.urlopen(req)
+        
+        conversations = json.loads(r.read())
+        # Sets list of participants upon finding matching conversation id
+        for c in conversations:
+            if self.id == c["conversation_id"]:
+                self.participants = c["participants"] # list of participants in the conversation
+                
+        self.initiator = self.participants[-1]; # if list is >1, initiator is last
+
 
     def append_msg_to_process(self, msg_json):
         '''
@@ -101,7 +118,17 @@ class Conversation:
         '''
         Prepares the conversation for usage
         :return:
-        '''
+        ''' 
+        
+        global state = CRYPTO;
+        #HOW TO TELL IF A USER IS THE INITIATOR: state = CREATE_CONVERSATION
+        current_user = self.manager.user_name #name of current user
+        
+        if current_user == self.initiator:
+            master_key = Random.new().read(AES.block_size)
+        else:
+            self.process_outgoing_message()
+            
         
         # You can use this function to initiate your key exchange
 		# Useful stuff that you may need:
@@ -130,19 +157,25 @@ class Conversation:
 		# example is base64 decoding, extend this with any crypto processing of your protocol
 		# decode the message with AES
         global key
+        msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
         iv = msg_raw[:AES.block_size]
         msg_raw = msg_raw[AES.block_size:]
         cipher = AES.new(key, AES.MODE_CBC, iv)
-        decoded_msg = cipher.decrypt(msg_raw)
+        decoded_msg = cipher.decrypt(msg_raw)   
         decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
 
-        #signature verification
-    
-        # print message and add it to the list of printed messages
-        self.print_message(
-            msg_raw=decoded_msg,
-            owner_str=owner_str
-        )
+        # signature verification
+
+        # message sent in chat state
+        if msg_type == 0:
+            # print message and add it to the list of printed messages
+            self.print_message(
+                msg_raw=decoded_msg,
+                owner_str=owner_str)
+        elif msg_type == 1;
+            # message sent in crypto state
+            # if user is the initiator, checks user's public key with
+            # those of eligible participants. If its correct, send the master key
 
     def process_outgoing_message(self, msg_raw, originates_from_console=False):
         '''
@@ -151,33 +184,44 @@ class Conversation:
         :param msg_raw: raw message
         :return: message to be sent to the server
         '''
+        if state = CHAT: 
+            # if the message has been typed into the console, record it, so it is never printed again during chatting
+            if originates_from_console == True:
+                # message is already seen on the console
+                m = Message(
+                    owner_name=self.manager.user_name,
+                    content=msg_raw
+                )
+                self.printed_messages.append(m)
 
+            #TLS padding here
+            plength = AES.block_size - (len(msg_raw)%AES.block_size)
+            msg_raw += chr(plength)*plength
 
-        
-        # if the message has been typed into the console, record it, so it is never printed again during chatting
-        if originates_from_console == True:
-            # message is already seen on the console
-            m = Message(
-                owner_name=self.manager.user_name,
-                content=msg_raw
-            )
-            self.printed_messages.append(m)
+            # process outgoing message here
+            # encode the message with AES\
+            iv = Random.new().read(AES.block_size)
+            global key
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            encoded_msg = 0+iv+cipher.encrypt(msg_raw) # 0 indicates its a chat message
 
-        #TLS padding here
-        plength = AES.block_size - (len(msg_raw)%AES.block_size)
-        msg_raw += chr(plength)*plength
-        
-        # process outgoing message here
-		# encode the message with AES\
-        iv = Random.new().read(AES.block_size)
-        global key
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        encoded_msg = iv+cipher.encrypt(msg_raw)
+            #add the digital signature here onto the hashed message
 
-        #add the digital signature here onto the hashed message
-        
-        # post the message to the conversation
-        self.manager.post_message_to_conversation(encoded_msg)
+            # post the message to the conversation
+            self.manager.post_message_to_conversation(encoded_msg)
+        elif state = CRYPTO:
+            #TLS padding here
+            plength = AES.block_size - (len(msg_raw)%AES.block_size)
+            msg_raw += chr(plength)*plength
+
+            # process outgoing message here
+            # encode the message with AES\
+            iv = Random.new().read(AES.block_size)
+            global key
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            encoded_msg = 1+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
+
+            #add the digital signature here onto the hashed message
 
     def print_message(self, msg_raw, owner_str):
         '''
@@ -191,6 +235,7 @@ class Conversation:
         msg = Message(content=msg_raw,
                       owner_name=owner_str)
         # If it does not originate from the current user or it is part of conversation history, print it
+        # ADD REPLAY PREVENTION; msg id must be + 1 greater than prior message id
         if msg not in self.printed_messages:
             print msg
             # Append it to the list of printed messages
