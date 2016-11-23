@@ -3,6 +3,7 @@ from time import sleep
 from threading import Thread
 from Crypto.Cipher import AES
 from Crypto import Random
+from Crypto.PublicKey import RSA
 import base64
 
 key = b'0123456789abcdef0123456789abcdef'
