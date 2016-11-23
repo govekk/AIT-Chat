@@ -134,6 +134,8 @@ class Conversation:
         decoded_msg = cipher.decrypt(msg_raw)
         decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
 
+        #signature verification
+    
         # print message and add it to the list of printed messages
         self.print_message(
             msg_raw=decoded_msg,
@@ -170,6 +172,8 @@ class Conversation:
         cipher = AES.new(key, AES.MODE_CBC, iv)
         encoded_msg = cipher.encrypt(msg_raw)
 
+        #add the digital signature here onto the hashed message
+        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
 
