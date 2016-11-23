@@ -128,12 +128,15 @@ class Conversation:
         # process message here
 		# example is base64 decoding, extend this with any crypto processing of your protocol
 		# decode the message with AES
-	iv = Random.new().read(AES.block_size)
-	global key
+        global key
+        iv = msg_raw[:AES.block_size]
+        msg_raw = msg_raw[AES.block_size:]
         cipher = AES.new(key, AES.MODE_CBC, iv)
         decoded_msg = cipher.decrypt(msg_raw)
         decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
 
+        #signature verification
+    
         # print message and add it to the list of printed messages
         self.print_message(
             msg_raw=decoded_msg,
@@ -165,11 +168,14 @@ class Conversation:
         
         # process outgoing message here
 		# encode the message with AES\
-	iv = Random.new().read(AES.block_size)
-	global key
+        iv = Random.new().read(AES.block_size)
+        global key
         cipher = AES.new(key, AES.MODE_CBC, iv)
-        encoded_msg = cipher.encrypt(msg_raw)
+        encoded_msg = iv+cipher.encrypt(msg_raw)
 
+
+        #add the digital signature here onto the hashed message
+        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
 
