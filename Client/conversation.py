@@ -5,7 +5,7 @@ from Crypto.Cipher import AES
 from Crypto import Random
 import base64
 
-key = Random.new().read(AES.block_size)
+key = b'0123456789abcdef0123456789abcdef'
 class Conversation:
     '''
     Represents a conversation between participants
@@ -148,9 +148,7 @@ class Conversation:
         :return: message to be sent to the server
         '''
 
-        #TLS padding here
-        plength = AES.block_size - (len(msg_raw)%AES.block_size)
-        msg_raw += chr(plength)*plength
+
         
         # if the message has been typed into the console, record it, so it is never printed again during chatting
         if originates_from_console == True:
@@ -161,6 +159,10 @@ class Conversation:
             )
             self.printed_messages.append(m)
 
+        #TLS padding here
+        plength = AES.block_size - (len(msg_raw)%AES.block_size)
+        msg_raw += chr(plength)*plength
+        
         # process outgoing message here
 		# encode the message with AES\
 	iv = Random.new().read(AES.block_size)
