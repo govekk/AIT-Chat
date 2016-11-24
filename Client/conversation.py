@@ -183,10 +183,6 @@ class Conversation:
             owner_str=owner_str
         )
 
-        
-        print decoded_msg
-        print
-
         # signature verification
         '''
 #we need to remove the signature part of the message first
