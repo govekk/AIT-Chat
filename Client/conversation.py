@@ -34,7 +34,7 @@ class Conversation:
         self.msg_process_loop_started = True
         
         '''
-                # Queries the server for the conversations of the current user (user is a participant)
+        # Queries the server for the conversations of the current user (user is a participant)
         req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations")
         # Include Cookie
         req.add_header("Cookie", self.manager.cookie)
@@ -164,6 +164,9 @@ class Conversation:
         cipher = AES.new(key, AES.MODE_CBC, iv)
         decoded_msg = cipher.decrypt(msg_raw)   
         decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
+        
+        print decoded_msg
+        print
 
         # signature verification
 
