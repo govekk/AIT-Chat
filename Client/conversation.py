@@ -33,8 +33,8 @@ class Conversation:
         self.msg_process_loop.start()
         self.msg_process_loop_started = True
         
-        
-        # Queries the server for the conversations of the current user (user is a participant)
+        '''
+                # Queries the server for the conversations of the current user (user is a participant)
         req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations")
         # Include Cookie
         req.add_header("Cookie", self.manager.cookie)
@@ -47,6 +47,7 @@ class Conversation:
                 self.participants = c["participants"] # list of participants in the conversation
                 
         self.initiator = self.participants[-1]; # if list is >1, initiator is last
+        '''
 
 
     def append_msg_to_process(self, msg_json):
@@ -119,7 +120,7 @@ class Conversation:
         Prepares the conversation for usage
         :return:
         ''' 
-        
+        '''
         global state = CRYPTO;
         #HOW TO TELL IF A USER IS THE INITIATOR: state = CREATE_CONVERSATION
         current_user = self.manager.user_name #name of current user
@@ -127,7 +128,7 @@ class Conversation:
         if current_user == self.initiator:
             master_key = Random.new().read(AES.block_size)
         else:
-            self.process_outgoing_message()
+            self.process_outgoing_message("Here's my nonce, encrypted with initiator's public key!")'''
             
         
         # You can use this function to initiate your key exchange
@@ -157,7 +158,7 @@ class Conversation:
 		# example is base64 decoding, extend this with any crypto processing of your protocol
 		# decode the message with AES
         global key
-        msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
+        #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
         iv = msg_raw[:AES.block_size]
         msg_raw = msg_raw[AES.block_size:]
         cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -167,6 +168,7 @@ class Conversation:
         # signature verification
 
         # message sent in chat state
+        '''
         if msg_type == 0:
             # print message and add it to the list of printed messages
             self.print_message(
@@ -176,6 +178,20 @@ class Conversation:
             # message sent in crypto state
             # if user is the initiator, checks user's public key with
             # those of eligible participants. If its correct, send the master key
+            
+            
+            #PSEUDO CODE: initiator sends group key
+            if encryption == user.public_key && user = self.initiator {
+                # Master key is encrypted with key user's nonce and public key of user (and initiator?)
+                self.process_outgoing_message("Sending the master key!");
+            }
+        elif msg_type == 1 && state == CRYPTO:
+            #PSEUDO CODE: User waiting for master key that has intercepted a crypto message
+            msg_sig = self.initiator.public_key # make sure that the initiator sent the message
+            master key = decoded_msg    # make this the global key??
+            state = CHAT                # has master key, may now read all chats
+            '''
+            
 
     def process_outgoing_message(self, msg_raw, originates_from_console=False):
         '''
@@ -184,7 +200,7 @@ class Conversation:
         :param msg_raw: raw message
         :return: message to be sent to the server
         '''
-        if state = CHAT: 
+        if state == CHAT: 
             # if the message has been typed into the console, record it, so it is never printed again during chatting
             if originates_from_console == True:
                 # message is already seen on the console
@@ -209,6 +225,7 @@ class Conversation:
 
             # post the message to the conversation
             self.manager.post_message_to_conversation(encoded_msg)
+        '''
         elif state = CRYPTO:
             #TLS padding here
             plength = AES.block_size - (len(msg_raw)%AES.block_size)
@@ -222,6 +239,7 @@ class Conversation:
             encoded_msg = 1+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
 
             #add the digital signature here onto the hashed message
+            '''
 
     def print_message(self, msg_raw, owner_str):
         '''

@@ -37,7 +37,7 @@ class ChatManager:
         self.user_name = user_name  # user name of the current user
         self.password = password  # password of the current user
         self.get_msgs_thread_started = False  # message retrieval has not been started
-
+        
     def login_user(self):
         '''
         Logs the current user in
