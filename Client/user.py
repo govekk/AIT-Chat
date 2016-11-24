@@ -1,5 +1,6 @@
 from json import JSONEncoder
 import os.path
+from Crypto.PublicKey import RSA
 
 class User():
     '''

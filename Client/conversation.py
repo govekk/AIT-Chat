@@ -6,7 +6,7 @@ from Crypto import Random
 from Crypto.PublicKey import RSA
 import base64
 
-state = CHAT;
+state = 'CHAT';
 key = b'0123456789abcdef0123456789abcdef'
 class Conversation:
     '''
@@ -121,7 +121,7 @@ class Conversation:
         :return:
         ''' 
         '''
-        global state = CRYPTO;
+        global state == 'CRYPTO';
         #HOW TO TELL IF A USER IS THE INITIATOR: state = CREATE_CONVERSATION
         current_user = self.manager.user_name #name of current user
         
@@ -185,11 +185,11 @@ class Conversation:
                 # Master key is encrypted with key user's nonce and public key of user (and initiator?)
                 self.process_outgoing_message("Sending the master key!");
             }
-        elif msg_type == 1 && state == CRYPTO:
+        elif msg_type == 1 && state == 'CRYPTO':
             #PSEUDO CODE: User waiting for master key that has intercepted a crypto message
             msg_sig = self.initiator.public_key # make sure that the initiator sent the message
             master key = decoded_msg    # make this the global key??
-            state = CHAT                # has master key, may now read all chats
+            state = 'CHAT'                # has master key, may now read all chats
             '''
             
 
@@ -200,7 +200,7 @@ class Conversation:
         :param msg_raw: raw message
         :return: message to be sent to the server
         '''
-        if state == CHAT: 
+        if state == 'CHAT': 
             # if the message has been typed into the console, record it, so it is never printed again during chatting
             if originates_from_console == True:
                 # message is already seen on the console
@@ -219,14 +219,14 @@ class Conversation:
             iv = Random.new().read(AES.block_size)
             global key
             cipher = AES.new(key, AES.MODE_CBC, iv)
-            encoded_msg = 0+iv+cipher.encrypt(msg_raw) # 0 indicates its a chat message
+            encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
             #add the digital signature here onto the hashed message
 
             # post the message to the conversation
             self.manager.post_message_to_conversation(encoded_msg)
         '''
-        elif state = CRYPTO:
+        elif state == 'CRYPTO':
             #TLS padding here
             plength = AES.block_size - (len(msg_raw)%AES.block_size)
             msg_raw += chr(plength)*plength
@@ -236,7 +236,7 @@ class Conversation:
             iv = Random.new().read(AES.block_size)
             global key
             cipher = AES.new(key, AES.MODE_CBC, iv)
-            encoded_msg = 1+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
+            encoded_msg = '1'+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
 
             #add the digital signature here onto the hashed message
             '''
