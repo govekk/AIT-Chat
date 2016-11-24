@@ -165,6 +165,13 @@ class Conversation:
         decoded_msg = cipher.decrypt(msg_raw)   
         decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
         
+        # print message and add it to the list of printed messages
+        self.print_message(
+            msg_raw=decoded_msg,
+            owner_str=owner_str
+        )
+
+        
         print decoded_msg
         print
 
@@ -228,6 +235,7 @@ class Conversation:
 
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
+        
         '''
         elif state == 'CRYPTO':
             #TLS padding here
