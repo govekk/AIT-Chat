@@ -152,6 +152,18 @@ class Conversation:
         :return: message to be sent to the server
         '''
 
+        kfile = open(self.manager.user_name+'_pub.pem')
+        pubkeystr = kfile.read()
+        kfile.close()
+        pubkey = RSA.importKey(pubkeystr)
+        kfile = open(self.manager.user_name+'_pair.pem')
+        keystr = kfile.read()
+        kfile.close()
+        key_pair = RSA.importKey(keystr)
+        print
+        print pubkey
+        print key_pair
+        print
 
         
         # if the message has been typed into the console, record it, so it is never printed again during chatting

@@ -4,13 +4,11 @@ import json
 from conversation import Conversation
 from message import Message, MessageEncoder
 from time import sleep
-
 from menu import menu
-
 from threading import Thread
-
 import base64
-
+import os.path
+from Crypto.PublicKey import RSA
 
 state = INIT  # initial state for the application
 has_requested_messages = False  # history of the next conversation will need to be downloaded and printed
@@ -36,7 +34,20 @@ class ChatManager:
         )  # thread, retrieves messages from the server
         self.user_name = user_name  # user name of the current user
         self.password = password  # password of the current user
+        self.create_key_pairs()
         self.get_msgs_thread_started = False  # message retrieval has not been started
+
+    def create_key_pairs(self):
+        pair_file = self.user_name+'_pair.pem'
+        pub_file = self.user_name+'_pub.pem'
+        if not os.path.isfile(pair_file):
+            key = RSA.generate(2048)
+            ofile = open(pair_file, 'w')
+            ofile.write(key.exportKey('PEM'))
+            ofile.close()
+            ofile = open(pub_file, 'w')
+            ofile.write(key.publickey().exportKey('PEM'))
+            ofile.close()
 
     def login_user(self):
         '''
