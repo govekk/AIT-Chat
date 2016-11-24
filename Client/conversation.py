@@ -200,31 +200,31 @@ class Conversation:
         :param msg_raw: raw message
         :return: message to be sent to the server
         '''
-        if state == 'CHAT': 
-            # if the message has been typed into the console, record it, so it is never printed again during chatting
-            if originates_from_console == True:
-                # message is already seen on the console
-                m = Message(
-                    owner_name=self.manager.user_name,
-                    content=msg_raw
-                )
-                self.printed_messages.append(m)
+        #if state == 'CHAT': 
+        # if the message has been typed into the console, record it, so it is never printed again during chatting
+        if originates_from_console == True:
+            # message is already seen on the console
+            m = Message(
+                owner_name=self.manager.user_name,
+                content=msg_raw
+            )
+            self.printed_messages.append(m)
 
-            #TLS padding here
-            plength = AES.block_size - (len(msg_raw)%AES.block_size)
-            msg_raw += chr(plength)*plength
+        #TLS padding here
+        plength = AES.block_size - (len(msg_raw)%AES.block_size)
+        msg_raw += chr(plength)*plength
 
-            # process outgoing message here
-            # encode the message with AES\
-            iv = Random.new().read(AES.block_size)
-            global key
-            cipher = AES.new(key, AES.MODE_CBC, iv)
-            encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
+        # process outgoing message here
+        # encode the message with AES\
+        iv = Random.new().read(AES.block_size)
+        global key
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
-            #add the digital signature here onto the hashed message
+        #add the digital signature here onto the hashed message
 
-            # post the message to the conversation
-            self.manager.post_message_to_conversation(encoded_msg)
+        # post the message to the conversation
+        self.manager.post_message_to_conversation(encoded_msg)
         '''
         elif state == 'CRYPTO':
             #TLS padding here
