@@ -87,8 +87,7 @@ class ChatManager:
         except urllib2.URLError as e:
             print "Unable to retrieve public key, reason:", e.message
             return
-
-
+            
     def login_user(self):
         '''
         Logs the current user in
