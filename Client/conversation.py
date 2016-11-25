@@ -164,48 +164,44 @@ class Conversation:
         # process message here
 		# example is base64 decoding, extend this with any crypto processing of your protocol
         
-        #verifying signature; length of encoded signature is 172. Remove 172
-        #first characters to get the string
+        # remove 172 first characters to get encoded signature
         signature = msg_raw[:172]
-        print "Encoded sig: " + signature
+        # decode signature
         signature_dec = str(base64.b64decode(signature))
-        print "Decoded sig: " + signature_dec
         msg_raw = msg_raw[172:]
-
+        # retrieve sender's public key
+        pubkeystr = self.manager.retrieve_public_key(owner_str)
+        pubkey = RSA.importKey(pubkeystr)
+        # new hash
+        hash = SHA256.new()
+        hash.update(msg_raw)
+        verifier = PKCS1_v1_5.new(pubkey)
         
+        # if signature is correct
+        if verifier.verify(hash, signature_dec):
+            # decode the message with AES
+            global key
+            #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
+            iv = msg_raw[:AES.block_size]
+            msg_raw = msg_raw[AES.block_size:]
+            cipher = AES.new(key, AES.MODE_CBC, iv)
+            decoded_msg = cipher.decrypt(msg_raw)   
+            decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
+
+            #print message and add it to the list of printed messages
+            self.print_message(
+                msg_raw=decoded_msg,
+                owner_str=owner_str
+                )
+        # if signature is not correct
+        else:
+            print owner_str + "Failed to authenticate " + owner_str + ". Message will not be printed."
+             
+        '''
 		# decode the message with AES
         global key
-        #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
-        iv = msg_raw[:AES.block_size]
-        msg_raw = msg_raw[AES.block_size:]
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        decoded_msg = cipher.decrypt(msg_raw)   
-        decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
-
-        #print message and add it to the list of printed messages
-        self.print_message(
-            msg_raw=decoded_msg,
-            owner_str=owner_str
-            )
+        #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent'''
         
-        # signature verification
-        '''
-        #we need to remove the signature part of the message first
-        
-        #import users public key
-        key = RSA.importKey(open('pubkey.der').read())
-        #new hash
-        hash = SHA.new()
-        #hash the message
-        hash.update(message)
-        #verify the message using the key and the pkcs1 standard
-        verifier = PKCS1_PSS.new(key)
-        if verifier.verify(hash, signature):
-             print "The signature is authentic."
-        else:
-             print "The signature is not authentic."
-        '''
-
         # message sent in chat state
         '''
         if msg_type == 0:
@@ -260,18 +256,21 @@ class Conversation:
         cipher = AES.new(key, AES.MODE_CBC, iv)
         encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
-        #add the digital signature here onto the hashed message
+        # Sign message
         
-        #read the private key of the said user
+        #read the private key of the user
         #key = RSA.importKey(open('privkey.der').read())
+        kfile = open(self.manager.user_name+'_pairKey.pem')
+        privkeystr = kfile.read()
+        kfile.close()
+        privkey = RSA.importKey(privkeystr)
         #make a hash and hash the message with the padding and iv
-        hash = SHA256.new(encoded_msg)
-        signer = PKCS1_v1_5.new(key1)
+        hash = SHA256.new()
+        hash.update(encoded_msg)
+        signer = PKCS1_v1_5.new(privkey)
         # sign and encrypt the message; signature is 172 char long
         signature = signer.sign(hash)
         signature_enc = str(base64.b64encode(signature))
-        #print "Outgoing sig: " + signature_enc
-        #print "Length of sig: " + str(len(signature_enc))
         
         # append signature to front of encoded message
         encoded_msg = signature_enc + encoded_msg
