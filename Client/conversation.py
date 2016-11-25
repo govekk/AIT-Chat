@@ -188,12 +188,6 @@ class Conversation:
             owner_str=owner_str
             )
         
-        # print message and add it to the list of printed messages
-        self.print_message(
-            msg_raw=decoded_msg,
-            owner_str=owner_str
-        )
-
         # signature verification
         '''
         #we need to remove the signature part of the message first
@@ -273,16 +267,14 @@ class Conversation:
         #make a hash and hash the message with the padding and iv
         hash = SHA256.new(encoded_msg)
         signer = PKCS1_v1_5.new(key1)
-        #sign the message; signature is 172 char long
+        # sign and encrypt the message; signature is 172 char long
         signature = signer.sign(hash)
-        # print signature 
         signature_enc = str(base64.b64encode(signature))
-        print "Outgoing sig: " + signature_enc
-        print "Length of sig: " + str(len(signature_enc))
+        #print "Outgoing sig: " + signature_enc
+        #print "Length of sig: " + str(len(signature_enc))
         
+        # append signature to front of encoded message
         encoded_msg = signature_enc + encoded_msg
-        
-        encoded_msg=encoded_msg+signature        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
         
