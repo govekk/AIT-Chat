@@ -67,7 +67,7 @@ class ChatManager:
             print "Unable to set public key, server returned HTTP", e.code, e.msg
             return
         except urllib2.URLError as e:
-            print "Unable to set public key, reason:", e.message
+            print "Unable to set public key, reason:", e.reason
             return
 
     def retrieve_public_key(self, user_name):
@@ -85,7 +85,7 @@ class ChatManager:
             print "Unable to retrieve public key, server returned HTTP", e.code, e.msg
             return
         except urllib2.URLError as e:
-            print "Unable to retrieve public key, reason:", e.message
+            print "Unable to retrieve public key, reason:", e.reason
             return
             
     def login_user(self):

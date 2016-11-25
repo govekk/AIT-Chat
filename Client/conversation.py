@@ -8,10 +8,7 @@ from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
 
 import base64
-'''
-#digital signatures need hashing and making sure the keys are RSA approved
-from Crypto.Signature import PKCS1_PSS
-'''
+
 state = 'CHAT';
 
 key = b'0123456789abcdef0123456789abcdef'
@@ -270,7 +267,7 @@ class Conversation:
         encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
         #add the digital signature here onto the hashed message
-        '''
+        
         #read the private key of the said user
         #key = RSA.importKey(open('privkey.der').read())
         #make a hash and hash the message with the padding and iv
@@ -285,7 +282,7 @@ class Conversation:
         
         encoded_msg = signature_enc + encoded_msg
         
-        encoded_msg=encoded_msg+signature '''        
+        encoded_msg=encoded_msg+signature        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
         
@@ -303,7 +300,7 @@ class Conversation:
             encoded_msg = '1'+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
 
             #add the digital signature here onto the hashed message
-            '''
+        '''
 
     def print_message(self, msg_raw, owner_str):
         '''
