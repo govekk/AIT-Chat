@@ -38,8 +38,8 @@ class ChatManager:
         self.get_msgs_thread_started = False  # message retrieval has not been started
 
     def create_key_pairs(self):
-        pair_file = self.user_name+'_pair.pem'
-        pub_file = self.user_name+'_pub.pem'
+        pair_file = self.user_name+'_pairKey.pem'
+        pub_file = self.user_name+'_pubKey.pem'
         if not os.path.isfile(pair_file):
             key = RSA.generate(2048)
             ofile = open(pair_file, 'w')
@@ -48,6 +48,46 @@ class ChatManager:
             ofile = open(pub_file, 'w')
             ofile.write(key.publickey().exportKey('PEM'))
             ofile.close()
+
+        ofile = open(pub_file, 'r')
+        pub_key_str = ofile.read()
+        ofile.close()
+
+
+        key_data = json.dumps({
+            "user_name": self.user_name,
+            "public_key": pub_key_str
+        })
+        try:
+            # Send public key string to server
+            req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/publickeyset", data=key_data)
+            req.add_header("Cookie", self.cookie)
+            r = urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            print "Unable to set public key, server returned HTTP", e.code, e.msg
+            return
+        except urllib2.URLError as e:
+            print "Unable to set public key, reason:", e.message
+            return
+
+    def retrieve_public_key(self, user_name):
+        key_data = json.dumps({
+            "user_name": user_name
+        })
+        try:
+            # Send public key string to server
+            req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/publickeyretrieve", data=key_data)
+            req.add_header("Cookie", self.cookie)
+            r = urllib2.urlopen(req)
+            public_key = json.loads(r.read())
+            return public_key
+        except urllib2.HTTPError as e:
+            print "Unable to retrieve public key, server returned HTTP", e.code, e.msg
+            return
+        except urllib2.URLError as e:
+            print "Unable to retrieve public key, reason:", e.message
+            return
+
 
     def login_user(self):
         '''
@@ -111,7 +151,7 @@ class ChatManager:
                 print "Unable to create conversation, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to create conversation, reason:", e.message
+                print "Unable to create conversation, reason:", e.reason
                 return
             # Print potential participants
             print "Available users:"
@@ -148,7 +188,7 @@ class ChatManager:
                 print "Unable to create conversation, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to create conversation, reason:", e.message
+                print "Unable to create conversation, reason:", e.reason
                 return
             print "Conversation created"
         else:
@@ -173,7 +213,7 @@ class ChatManager:
                 print "Unable to download conversations, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to download conversations, reason:", e.message
+                print "Unable to download conversations, reason:", e.reason
                 return
             conversations = json.loads(r.read())
             # Print conversations with IDs and participant lists
@@ -209,7 +249,7 @@ class ChatManager:
                     self.get_msgs_thread_started = False
                     continue
                 except urllib2.URLError as e:
-                    print "Unable to download messages, reason: ", e.message
+                    print "Unable to download messages, reason: ", e.reason
                     self.get_msgs_thread_started = False
                     continue
                 # Process incoming messages
@@ -242,7 +282,7 @@ class ChatManager:
         except urllib2.HTTPError as e:
             print "Unable to post message, server returned HTTP", e.code, e.msg
         except urllib2.URLError as e:
-            print "Unable to post message, reason: ", e.message
+            print "Unable to post message, reason: ", e.reason
 
     def read_user_input(self):
         '''
@@ -309,7 +349,7 @@ class ChatManager:
                         print "Unable to determine validity of conversation ID, server returned HTTP", e.code, e.msg
                         continue
                     except urllib2.URLError as e:
-                        print "Unable to determine validity of conversation ID, reason: ", e.message
+                        print "Unable to determine validity of conversation ID, reason: ", e.reason
                         continue
                     except EOFError:
                         # User has not provided any input, but waiting for the input was interrupted
