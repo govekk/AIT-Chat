@@ -4,16 +4,17 @@ from threading import Thread
 from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.PublicKey import RSA
-import base64
-'''
-#digital signatures need hashing and making sure the keys are RSA approved
-from Crypto.Signature import PKCS1_PSS
 from Crypto.Hash import SHA256
-'''
+from Crypto.Signature import PKCS1_v1_5
+
+import base64
+
 state = 'CHAT';
+
 key = b'0123456789abcdef0123456789abcdef'
 
-#key1 = b'0123456789abcdef0123456789abcdeg'
+random_generator = Random.new().read
+key1 = RSA.generate(1024, random_generator)
 class Conversation:
     '''
     Represents a conversation between participants
@@ -162,6 +163,16 @@ class Conversation:
 
         # process message here
 		# example is base64 decoding, extend this with any crypto processing of your protocol
+        
+        #verifying signature; length of encoded signature is 172. Remove 172
+        #first characters to get the string
+        signature = msg_raw[:172]
+        print "Encoded sig: " + signature
+        signature_dec = str(base64.b64decode(signature))
+        print "Decoded sig: " + signature_dec
+        msg_raw = msg_raw[172:]
+
+        
 		# decode the message with AES
         global key
         #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
@@ -186,6 +197,7 @@ class Conversation:
         # signature verification
         '''
         #we need to remove the signature part of the message first
+        
         #import users public key
         key = RSA.importKey(open('pubkey.der').read())
         #new hash
@@ -255,19 +267,22 @@ class Conversation:
         encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
         #add the digital signature here onto the hashed message
-        '''
+        
         #read the private key of the said user
         #key = RSA.importKey(open('privkey.der').read())
-        #make a hash
-        hash = SHA256.new()
-        #hash the message with the padding included and the iv 
-        hash.update(encoded_msg)
-        # authenticate the rsa keys using the PKCS1 standard
-        signer = PKCS1_PSS.new(key)
-        #sign the message
-        signature = PKCS1_PSS.sign(key)
+        #make a hash and hash the message with the padding and iv
+        hash = SHA256.new(encoded_msg)
+        signer = PKCS1_v1_5.new(key1)
+        #sign the message; signature is 172 char long
+        signature = signer.sign(hash)
+        # print signature 
+        signature_enc = str(base64.b64encode(signature))
+        print "Outgoing sig: " + signature_enc
+        print "Length of sig: " + str(len(signature_enc))
         
-        encoded_msg=encoded_msg+signature '''        
+        encoded_msg = signature_enc + encoded_msg
+        
+        encoded_msg=encoded_msg+signature        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
         
@@ -285,7 +300,7 @@ class Conversation:
             encoded_msg = '1'+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
 
             #add the digital signature here onto the hashed message
-            '''
+        '''
 
     def print_message(self, msg_raw, owner_str):
         '''
