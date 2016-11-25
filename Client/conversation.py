@@ -5,14 +5,15 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.PublicKey import RSA
 import base64
-'''
-#digital signatures need hashing and making sure the keys are RSA approved
-from Crypto.Signature import PKCS1_PSS
-from Crypto.Hash import SHA256
-'''
-state = 'CHAT';
-key = b'0123456789abcdef0123456789abcdef'
 
+#digital signatures need hashing and making sure the keys are RSA approved
+from Crypto.Hash import SHA256
+
+state = 'CHAT';
+
+key = b'0123456789abcdef0123456789abcdef'
+random_generator=Random.new().read
+key1 = RSA.generate(1024,random_generator)
 #key1 = b'0123456789abcdef0123456789abcdeg'
 class Conversation:
     '''
@@ -177,32 +178,25 @@ class Conversation:
             owner_str=owner_str
             )
         
-        # print message and add it to the list of printed messages
-        self.print_message(
-            msg_raw=decoded_msg,
-            owner_str=owner_str
-        )
-
-        
         print decoded_msg
         print
-
-        # signature verification
         '''
-#we need to remove the signature part of the message first
-#import users public key
-key = RSA.importKey(open('pubkey.der').read())
-#new hash
-hash = SHA.new()
-#hash the message
-hash.update(message)
-#verify the message using the key and the pkcs1 standard
-verifier = PKCS1_PSS.new(key)
-if verifier.verify(hash, signature):
-     print "The signature is authentic."
-else:
-     print "The signature is not authentic."
-'''
+        # signature verification
+        #we need to remove the signature part of the message first
+        #import users public key
+        ##public_key = RSA.importKey(open('pubkey.der').read())
+        #new hash
+        hash = SHA256.new(decoded_msg).digest()
+        #hash=SHA256.new(text).digest()
+        #hash the message
+        ##hash.update(message)
+        #verify the message using the key and the pkcs1 standard
+        verifier = public_key.verify(hash,signature)
+        ##if verifier.verify(hash, signature):
+        ##     print "The signature is authentic."
+        ##else:
+        ##     print "The signature is not authentic."
+        '''
 
         # message sent in chat state
         '''
@@ -259,22 +253,25 @@ else:
         encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
         #add the digital signature here onto the hashed message
-'''
+
         #read the private key of the said user
         #key = RSA.importKey(open('privkey.der').read())
         #make a hash
-        hash = SHA256.new()
+        hash = SHA256.new(encoded_msg).digest()
         #hash the message with the padding included and the iv 
-        hash.update(encoded_msg)
-        # authenticate the rsa keys using the PKCS1 standard
-        signer = PKCS1_PSS.new(key)
+        ##hash.update(encoded_msg)
         #sign the message
-        signature = PKCS1_PSS.sign(key)
+        signature = key1.sign(hash,'')
+        #print signature 
+        signature_tuple = str(base64.b64encode(signature))
+        print signature_tuple
+        encoded_msg=encoded_msg+signature_tuple
+
+        print encoded_msg
         
-        encoded_msg=encoded_msg+signature 
-'''        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
+        #self.manager.post_message_to_conversation(signature)
         
         '''
         elif state == 'CRYPTO':
