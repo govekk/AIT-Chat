@@ -199,8 +199,9 @@ class Conversation:
 
         # signature verification
         '''
-        # we need to remove the signature part of the message first
-        # import users public key
+        #we need to remove the signature part of the message first
+        
+        #import users public key
         key = RSA.importKey(open('pubkey.der').read())
         #new hash
         hash = SHA.new()
@@ -269,7 +270,7 @@ class Conversation:
         encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
         #add the digital signature here onto the hashed message
-
+        '''
         #read the private key of the said user
         #key = RSA.importKey(open('privkey.der').read())
         #make a hash and hash the message with the padding and iv
@@ -284,6 +285,7 @@ class Conversation:
         
         encoded_msg = signature_enc + encoded_msg
         
+        encoded_msg=encoded_msg+signature '''        
         # post the message to the conversation
         self.manager.post_message_to_conversation(encoded_msg)
         

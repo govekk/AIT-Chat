@@ -14,17 +14,6 @@ class User():
         :return: instance
         '''
         self.user_name = user_name
-        pair_file = user_name+'pair.pem'
-        pub_file = user_name+'pub.pem'
-        if not os.path.isfile(pair_file):
-            key = RSA.generate(2048)
-            ofile = open(pair_file, 'w')
-            ofile.write(key.exportKey('PEM'))
-            ofile.close()
-            ofile = open(pub_file, 'w')
-            ofile.write(key.publickey().exportKey('PEM'))
-            ofile.close()
-
 
     def get_user_name(self):
         '''

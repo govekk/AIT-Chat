@@ -256,6 +256,43 @@ class ConcreteConversationHandler(JsonHandler):
         self.set_status(200)
         self.finish()
 
+class PublicKeySetHandler(JsonHandler):
+    def data_received(self, chunk):
+        pass
+
+    def post(self):
+        try:
+            public_key = self.request.arguments['public_key']
+            user_name = str(self.request.arguments['user_name'])
+            key_file = open(user_name+'_pubKey.pem','w')
+            key_file.write(public_key)
+            key_file.close()
+        except KeyError as e:
+            print "KeyError while setting public key!", e.message
+            self.send_error(400, message=e.message)
+            return
+        except Exception as e:
+            self.send_error(400, message=e.message)
+            return
+class PublicKeyRetrieveHandler(JsonHandler):
+    def data_received(self, chunk):
+        pass
+
+    def post(self):
+        try:
+            user_name = str(self.request.arguments['user_name'])
+            key_file = open(user_name+'_pubKey.pem','r')
+            public_key = key_file.read()
+            key_file.close()
+            self.response = public_key
+            self.write_json()
+        except KeyError as e:
+            print "KeyError while retrieving public key!", e.message
+            self.send_error(400, message=e.message)
+            return
+        except Exception as e:
+            self.send_error(400, message=e.message)
+            return
 
 def init_app():
     """
@@ -269,7 +306,9 @@ def init_app():
         (r"/conversations", ConversationHandler),
         (r"/conversations/create", ConversationCreateHandler),
         (r"/conversations/([0-9]+)", ConcreteConversationHandler),
-        (r"/conversations/([0-9]+)/([0-9]+)?", ConcreteConversationHandler)
+        (r"/conversations/([0-9]+)/([0-9]+)?", ConcreteConversationHandler),
+        (r"/publickeyset", PublicKeySetHandler),
+        (r"/publickeyretrieve", PublicKeyRetrieveHandler)
     ],
         cookie_secret="6d41bbfe48ce3d078479feb364d98ecda2206edc"
     )

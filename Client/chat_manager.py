@@ -4,13 +4,11 @@ import json
 from conversation import Conversation
 from message import Message, MessageEncoder
 from time import sleep
-
 from menu import menu
-
 from threading import Thread
-
 import base64
-
+import os.path
+from Crypto.PublicKey import RSA
 
 state = INIT  # initial state for the application
 has_requested_messages = False  # history of the next conversation will need to be downloaded and printed
@@ -36,8 +34,60 @@ class ChatManager:
         )  # thread, retrieves messages from the server
         self.user_name = user_name  # user name of the current user
         self.password = password  # password of the current user
+        self.create_key_pairs()
         self.get_msgs_thread_started = False  # message retrieval has not been started
-        
+
+    def create_key_pairs(self):
+        pair_file = self.user_name+'_pairKey.pem'
+        pub_file = self.user_name+'_pubKey.pem'
+        if not os.path.isfile(pair_file):
+            key = RSA.generate(2048)
+            ofile = open(pair_file, 'w')
+            ofile.write(key.exportKey('PEM'))
+            ofile.close()
+            ofile = open(pub_file, 'w')
+            ofile.write(key.publickey().exportKey('PEM'))
+            ofile.close()
+
+        ofile = open(pub_file, 'r')
+        pub_key_str = ofile.read()
+        ofile.close()
+
+
+        key_data = json.dumps({
+            "user_name": self.user_name,
+            "public_key": pub_key_str
+        })
+        try:
+            # Send public key string to server
+            req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/publickeyset", data=key_data)
+            req.add_header("Cookie", self.cookie)
+            r = urllib2.urlopen(req)
+        except urllib2.HTTPError as e:
+            print "Unable to set public key, server returned HTTP", e.code, e.msg
+            return
+        except urllib2.URLError as e:
+            print "Unable to set public key, reason:", e.message
+            return
+
+    def retrieve_public_key(self, user_name):
+        key_data = json.dumps({
+            "user_name": user_name
+        })
+        try:
+            # Send public key string to server
+            req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/publickeyretrieve", data=key_data)
+            req.add_header("Cookie", self.cookie)
+            r = urllib2.urlopen(req)
+            public_key = json.loads(r.read())
+            return public_key
+        except urllib2.HTTPError as e:
+            print "Unable to retrieve public key, server returned HTTP", e.code, e.msg
+            return
+        except urllib2.URLError as e:
+            print "Unable to retrieve public key, reason:", e.message
+            return
+            
     def login_user(self):
         '''
         Logs the current user in
@@ -100,7 +150,7 @@ class ChatManager:
                 print "Unable to create conversation, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to create conversation, reason:", e.message
+                print "Unable to create conversation, reason:", e.reason
                 return
             # Print potential participants
             print "Available users:"
@@ -137,7 +187,7 @@ class ChatManager:
                 print "Unable to create conversation, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to create conversation, reason:", e.message
+                print "Unable to create conversation, reason:", e.reason
                 return
             print "Conversation created"
         else:
@@ -162,7 +212,7 @@ class ChatManager:
                 print "Unable to download conversations, server returned HTTP", e.code, e.msg
                 return
             except urllib2.URLError as e:
-                print "Unable to download conversations, reason:", e.message
+                print "Unable to download conversations, reason:", e.reason
                 return
             conversations = json.loads(r.read())
             # Print conversations with IDs and participant lists
@@ -198,7 +248,7 @@ class ChatManager:
                     self.get_msgs_thread_started = False
                     continue
                 except urllib2.URLError as e:
-                    print "Unable to download messages, reason: ", e.message
+                    print "Unable to download messages, reason: ", e.reason
                     self.get_msgs_thread_started = False
                     continue
                 # Process incoming messages
@@ -231,7 +281,7 @@ class ChatManager:
         except urllib2.HTTPError as e:
             print "Unable to post message, server returned HTTP", e.code, e.msg
         except urllib2.URLError as e:
-            print "Unable to post message, reason: ", e.message
+            print "Unable to post message, reason: ", e.reason
 
     def read_user_input(self):
         '''
@@ -298,7 +348,7 @@ class ChatManager:
                         print "Unable to determine validity of conversation ID, server returned HTTP", e.code, e.msg
                         continue
                     except urllib2.URLError as e:
-                        print "Unable to determine validity of conversation ID, reason: ", e.message
+                        print "Unable to determine validity of conversation ID, reason: ", e.reason
                         continue
                     except EOFError:
                         # User has not provided any input, but waiting for the input was interrupted
