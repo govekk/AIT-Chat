@@ -264,9 +264,11 @@ class PublicKeySetHandler(JsonHandler):
         try:
             public_key = self.request.arguments['public_key']
             user_name = str(self.request.arguments['user_name'])
-            key_file = open(user_name+'_pubKey.pem','w')
-            key_file.write(public_key)
-            key_file.close()
+            password = str(self.request.arguments['password'])
+            if cm.login_user(user_name, password):
+                key_file = open(user_name+'_serverPubKey.pem','w')
+                key_file.write(public_key)
+                key_file.close()
         except KeyError as e:
             print "KeyError while setting public key!", e.message
             self.send_error(400, message=e.message)
@@ -281,7 +283,7 @@ class PublicKeyRetrieveHandler(JsonHandler):
     def post(self):
         try:
             user_name = str(self.request.arguments['user_name'])
-            key_file = open(user_name+'_pubKey.pem','r')
+            key_file = open(user_name+'_serverPubKey.pem','r')
             public_key = key_file.read()
             key_file.close()
             self.response = public_key

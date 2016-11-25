@@ -56,6 +56,7 @@ class ChatManager:
 
         key_data = json.dumps({
             "user_name": self.user_name,
+            "password": self.password,
             "public_key": pub_key_str
         })
         try:
