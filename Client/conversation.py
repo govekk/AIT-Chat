@@ -165,20 +165,20 @@ class Conversation:
 		# example is base64 decoding, extend this with any crypto processing of your protocol
         
         # remove 172 first characters to get encoded signature
-        signature = msg_raw[:172]
+        signature = msg_raw[:344]
         # decode signature
         signature_dec = str(base64.b64decode(signature))
-        msg_raw = msg_raw[172:]
+        msg_raw = msg_raw[344:]
         # retrieve sender's public key
         pubkeystr = self.manager.retrieve_public_key(owner_str)
         pubkey = RSA.importKey(pubkeystr)
         # new hash
-        hash = SHA256.new()
-        hash.update(msg_raw)
+        h = SHA256.new()
+        h.update(msg_raw)
         verifier = PKCS1_v1_5.new(pubkey)
         
         # if signature is correct
-        if verifier.verify(hash, signature_dec):
+        if verifier.verify(h, signature_dec):
             # decode the message with AES
             global key
             #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
@@ -265,11 +265,11 @@ class Conversation:
         kfile.close()
         privkey = RSA.importKey(privkeystr)
         #make a hash and hash the message with the padding and iv
-        hash = SHA256.new()
-        hash.update(encoded_msg)
+        h = SHA256.new()
+        h.update(encoded_msg)
         signer = PKCS1_v1_5.new(privkey)
-        # sign and encrypt the message; signature is 172 char long
-        signature = signer.sign(hash)
+        # sign and encrypt the message; encrypted signature is 344 char long
+        signature = signer.sign(h)
         signature_enc = str(base64.b64encode(signature))
         
         # append signature to front of encoded message
