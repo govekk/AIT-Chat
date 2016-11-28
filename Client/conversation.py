@@ -1,20 +1,26 @@
+from config import *
+import urllib2
+import json
 from message import Message
 from time import sleep
 from threading import Thread
 from Crypto.Cipher import AES
 from Crypto import Random
+from Crypto.Random import random
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from Crypto.Signature import PKCS1_v1_5
-
+from Crypto.Cipher import PKCS1_OAEP
+import os
 import base64
 
-state = 'CHAT';
+conv_state = 'CRYPTO'
+master_key =''
+nonce=''
+msg_type='0'
 
-key = b'0123456789abcdef0123456789abcdef'
+past_messages = []
 
-random_generator = Random.new().read
-key1 = RSA.generate(1024, random_generator)
 class Conversation:
     '''
     Represents a conversation between participants
@@ -26,7 +32,7 @@ class Conversation:
         :param manager: instance of the ChatManager class
         :return: None
         '''
-        self.id = c_id  # ID of the conversation
+        self.id = str(c_id)  # ID of the conversation
         self.all_messages = []  # all retrieved messages of the conversation
         self.printed_messages = []
         self.last_processed_msg_id = 0  # ID of the last processed message
@@ -40,7 +46,7 @@ class Conversation:
         self.msg_process_loop.start()
         self.msg_process_loop_started = True
         
-        '''
+        
         # Queries the server for the conversations of the current user (user is a participant)
         req = urllib2.Request("http://" + SERVER + ":" + SERVER_PORT + "/conversations")
         # Include Cookie
@@ -48,13 +54,13 @@ class Conversation:
         r = urllib2.urlopen(req)
         
         conversations = json.loads(r.read())
+        
         # Sets list of participants upon finding matching conversation id
         for c in conversations:
-            if self.id == c["conversation_id"]:
+            if self.id == str(c["conversation_id"]):
                 self.participants = c["participants"] # list of participants in the conversation
-                
-        self.initiator = self.participants[-1]; # if list is >1, initiator is last
-        '''
+        self.initiator = str(self.participants[-1]); # if list is >1, initiator is last
+        
 
 
     def append_msg_to_process(self, msg_json):
@@ -121,36 +127,55 @@ class Conversation:
                     # Update the ID of the last processed message to the current
                     self.last_processed_msg_id = msg_id
                 sleep(0.01)
+                
+
+        
 
     def setup_conversation(self):
         '''
         Prepares the conversation for usage
         :return:
-        ''' 
         '''
-        global state == 'CRYPTO';
-        #HOW TO TELL IF A USER IS THE INITIATOR: state = CREATE_CONVERSATION
-        current_user = self.manager.user_name #name of current user
-        
-        if current_user == self.initiator:
-            master_key = Random.new().read(AES.block_size)
+        global master_key
+        global conv_state
+        global nonce
+        global msg_type 
+        # set state as chat if there does exist a master key file and then go to processing outgoing messages   
+        if os.path.isfile('./master_key_'+self.id+'_'+self.manager.user_name+'.txt'):
+            master_key_file = open('master_key_'+self.id+'_'+self.manager.user_name+'.txt','r')
+            master_key=master_key_file.read()
+            master_key_file.close()
+            conv_state ='CHAT'
+            msg_type = '0'
+            pass
+        #set state as crypto if there doesnt exist a master key file
         else:
-            self.process_outgoing_message("Here's my nonce, encrypted with initiator's public key!")'''
             
-        
-        # You can use this function to initiate your key exchange
-		# Useful stuff that you may need:
-		# - name of the current user: self.manager.user_name
-        # - list of other users in the converstaion: list_of_users = self.manager.get_other_user()
-        # You may need to send some init message from this point of your code
-		# you can do that with self.process_outgoing_message("...") or whatever you may want to send here...
+            current_user = self.manager.user_name #name of current user
 
-        # Since there is no crypto in the current version, no preparation is needed, so do nothing
-		# replace this with anything needed for your key exchange 
+            if current_user == self.initiator:
+                #generate a master key using a nonce
+                master_key=Random.new().read(AES.block_size)                
+                #save master key to a file
+                master_key_file = open('master_key_'+self.id+'_'+self.manager.user_name+'.txt','w')
+                master_key_file.write(master_key)
+                master_key_file.close()
+                conv_state='CHAT'
+                msg_type='1'
+                                           
+                
+            else:
+                #generate a nonce
+                nonce=Random.new().read(16)
+                conv_state = 'CRYPTO'
+                self.process_outgoing_message('1'+nonce)
+                msg_type='1'
+                                           
         pass
 
 
     def process_incoming_message(self, msg_raw, msg_id, owner_str):
+                                        
         '''
         Process incoming messages
         :param msg_raw: the raw message
@@ -160,72 +185,133 @@ class Conversation:
         :param print_all: is the message part of the conversation history?
         :return: None
         '''
-
-        # process message here
-		# example is base64 decoding, extend this with any crypto processing of your protocol
-        
-        # remove 172 first characters to get encoded signature
-        signature = msg_raw[:344]
-        # decode signature
-        signature_dec = str(base64.b64decode(signature))
-        msg_raw = msg_raw[344:]
-        # retrieve sender's public key
-        pubkeystr = self.manager.retrieve_public_key(owner_str)
-        pubkey = RSA.importKey(pubkeystr)
-        # new hash
-        h = SHA256.new()
-        h.update(msg_raw)
-        verifier = PKCS1_v1_5.new(pubkey)
-        
-        # if signature is correct
-        if verifier.verify(h, signature_dec):
-            # decode the message with AES
-            global key
-            #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
-            iv = msg_raw[:AES.block_size]
-            msg_raw = msg_raw[AES.block_size:]
-            cipher = AES.new(key, AES.MODE_CBC, iv)
-            decoded_msg = cipher.decrypt(msg_raw)   
-            decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
-
-            #print message and add it to the list of printed messages
-            self.print_message(
-                msg_raw=decoded_msg,
-                owner_str=owner_str
-                )
-        # if signature is not correct
-        else:
-            print owner_str + "Failed to authenticate " + owner_str + ". Message will not be printed."
-             
-        '''
-		# decode the message with AES
-        global key
-        #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent'''
+        global conv_state
+        global master_key
+        global past_messages
+        global nonce
+        global msg_type
         
         # message sent in chat state
-        '''
-        if msg_type == 0:
-            # print message and add it to the list of printed messages
-            self.print_message(
-                msg_raw=decoded_msg,
-                owner_str=owner_str)
-        elif msg_type == 1;
-            # message sent in crypto state
+        msg_type = msg_raw[0]
+        msg_raw = msg_raw[1:]
+
+                    
+        #sending master key
+        if msg_type == '0' and conv_state == 'CRYPTO':
+            msg_list = ['0'+msg_raw, msg_id, owner_str]
+            past_messages.append(msg_list)
+        if msg_type == '0' and conv_state == 'CHAT':
+                        
+            # remove 344first characters to get encoded signature
+            signature = msg_raw[:344]
+            # decode signature
+            signature_dec = str(base64.b64decode(signature))
+                                           
+            msg_raw = msg_raw[344:]
+            # retrieve sender's public key
+            pubkeystr = self.manager.retrieve_public_key(owner_str)
+            pubkey = RSA.importKey(pubkeystr)
+            # new hash
+            h = SHA256.new()
+            h.update(msg_raw)
+            verifier = PKCS1_v1_5.new(pubkey)
+            
+            # if signature is correct
+            if verifier.verify(h, signature_dec):
+                # decode the message with AES
+                #msg_type = msg_raw[1:] # gets bit designating chat state when message was sent
+                iv = msg_raw[:AES.block_size]
+                msg_raw = msg_raw[AES.block_size:]
+                cipher = AES.new(master_key, AES.MODE_CBC, iv)
+                decoded_msg = cipher.decrypt(msg_raw)   
+                decoded_msg = decoded_msg[:len(decoded_msg)-ord(decoded_msg[-1])]
+                                           
+
+                #print message and add it to the list of printed messages
+                self.print_message(
+                    msg_raw=decoded_msg,
+                    owner_str=owner_str
+                    )
+            # if signature is not correct
+            else:
+                print self.manager.user_name + " failed to authenticate " + owner_str + ". Message will not be printed."
+                
+        elif msg_type == '1' and conv_state == 'CHAT':
+            # message sent in chat state
             # if user is the initiator, checks user's public key with
             # those of eligible participants. If its correct, send the master key
+            if owner_str == self.manager.user_name:
+                return
+            if self.manager.retrieve_public_key(owner_str) and self.manager.user_name==self.initiator:
+                #encrypt nonce + master key and signature
+                #owner_str is the person who sent the nonce
+                
+                pubkeystr = self.manager.retrieve_public_key(owner_str)
+                pubkey = RSA.importKey(pubkeystr)
+                cipher = PKCS1_OAEP.new(pubkey)
+                master_key_enc = base64.b64encode(cipher.encrypt(str(self.manager.user_name)+master_key))
+                sent_nonce = msg_raw
+                #generate signature using initiator's private key
+                kfile = open(self.manager.user_name+'_pairKey.pem')
+                privkeystr = kfile.read()
+                kfile.close()
+                privkey = RSA.importKey(privkeystr)
+                #make a hash and hash the message 
+                h = SHA256.new()
+                h.update(str(owner_str)+sent_nonce+master_key_enc)
+                signer = PKCS1_v1_5.new(privkey)
+                # sign and encrypt the master key
+                signature = signer.sign(h)
+                signature_key = str(base64.b64encode(signature))
+
+                master_key_send = '1'+sent_nonce+signature_key+master_key_enc
+
+                conv_state = 'CRYPTO'
+                self.process_outgoing_message(master_key_send)
+                conv_state = 'CHAT'
             
-            
-            #PSEUDO CODE: initiator sends group key
-            if encryption == user.public_key && user = self.initiator {
-                # Master key is encrypted with key user's nonce and public key of user (and initiator?)
-                self.process_outgoing_message("Sending the master key!");
-            }
-        elif msg_type == 1 && state == 'CRYPTO':
-            #PSEUDO CODE: User waiting for master key that has intercepted a crypto message
-            msg_sig = self.initiator.public_key # make sure that the initiator sent the message
-            master key = decoded_msg    # make this the global key??
-            state = 'CHAT'                # has master key, may now read all chats
-            '''
+                                           
+        elif msg_type == '1' and conv_state == 'CRYPTO':
+            #crypto state
+            if owner_str == self.manager.user_name:
+                return
+            if self.manager.retrieve_public_key(owner_str):
+                nonce_received =msg_raw[:16]
+                if nonce_received == nonce:
+                    sig_ver=msg_raw[16:360]
+                    msg_raw=msg_raw[360:]
+                    #verify the signature
+                    signature_dec = str(base64.b64decode(sig_ver))
+                    # retrieve sender's public key
+                    pubkeystr = self.manager.retrieve_public_key(owner_str)
+                    pubkey = RSA.importKey(pubkeystr)
+                    # new hash
+                    h = SHA256.new()
+                    h.update(str(self.manager.user_name)+nonce+msg_raw)
+                    verifier = PKCS1_v1_5.new(pubkey)
+                    if verifier.verify(h, signature_dec):
+                        #decrypt msg_raw
+                        kfile = open(self.manager.user_name+'_pairKey.pem')
+                        privkeystr = kfile.read()
+                        kfile.close()
+                        privkey = RSA.importKey(privkeystr)
+                        cipher = PKCS1_OAEP.new(privkey)
+                        master_key_receive=cipher.decrypt(base64.b64decode(msg_raw))
+                        owner_len=len(owner_str)
+                        if owner_str == master_key_receive[:owner_len]:
+                            master_key=master_key_receive[owner_len:]                                      
+                            #save master key to a file
+                            master_key_file = open('master_key_'+self.id+'_'+self.manager.user_name+'.txt','w')
+                            master_key_file.write(master_key)
+                            master_key_file.close()
+                        
+                            conv_state='CHAT'
+                            for message in past_messages:
+                                self.process_incoming_message(msg_raw=message[0],
+                                                      msg_id=message[1],
+                                                      owner_str=message[2])
+
+
             
 
     def process_outgoing_message(self, msg_raw, originates_from_console=False):
@@ -235,50 +321,21 @@ class Conversation:
         :param msg_raw: raw message
         :return: message to be sent to the server
         '''
-        #if state == 'CHAT': 
-        # if the message has been typed into the console, record it, so it is never printed again during chatting
-        if originates_from_console == True:
-            # message is already seen on the console
-            m = Message(
-                owner_name=self.manager.user_name,
-                content=msg_raw
-            )
-            self.printed_messages.append(m)
-
-        #TLS padding here
-        plength = AES.block_size - (len(msg_raw)%AES.block_size)
-        msg_raw += chr(plength)*plength
-
-        # process outgoing message here
-        # encode the message with AES\
-        iv = Random.new().read(AES.block_size)
-        global key
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
-
-        # Sign message
+        global conv_state
+        global master_key
+        global nonce
         
-        #read the private key of the user
-        #key = RSA.importKey(open('privkey.der').read())
-        kfile = open(self.manager.user_name+'_pairKey.pem')
-        privkeystr = kfile.read()
-        kfile.close()
-        privkey = RSA.importKey(privkeystr)
-        #make a hash and hash the message with the padding and iv
-        h = SHA256.new()
-        h.update(encoded_msg)
-        signer = PKCS1_v1_5.new(privkey)
-        # sign and encrypt the message; encrypted signature is 344 char long
-        signature = signer.sign(h)
-        signature_enc = str(base64.b64encode(signature))
-        
-        # append signature to front of encoded message
-        encoded_msg = signature_enc + encoded_msg
-        # post the message to the conversation
-        self.manager.post_message_to_conversation(encoded_msg)
-        
-        '''
-        elif state == 'CRYPTO':
+        if conv_state == 'CHAT': 
+            # if the message has been typed into the console, record it, so it is never printed again during chatting
+            if originates_from_console == True:
+                # message is already seen on the console
+                m = Message(
+                    owner_name=self.manager.user_name,
+                    content=msg_raw
+                )
+                self.printed_messages.append(m)
+
+
             #TLS padding here
             plength = AES.block_size - (len(msg_raw)%AES.block_size)
             msg_raw += chr(plength)*plength
@@ -286,12 +343,57 @@ class Conversation:
             # process outgoing message here
             # encode the message with AES\
             iv = Random.new().read(AES.block_size)
-            global key
-            cipher = AES.new(key, AES.MODE_CBC, iv)
-            encoded_msg = '1'+iv+cipher.encrypt(msg_raw) # 1 indicates its a crypto message
+            cipher = AES.new(master_key, AES.MODE_CBC, iv)
+            encoded_msg = iv+cipher.encrypt(msg_raw) # add '0' to front to indicate its a chat message
 
-            #add the digital signature here onto the hashed message
-        '''
+            # Sign message
+            
+            #read the private key of the user
+            #key = RSA.importKey(open('privkey.der').read())
+            kfile = open(self.manager.user_name+'_pairKey.pem')
+            privkeystr = kfile.read()
+            kfile.close()
+            privkey = RSA.importKey(privkeystr)
+            #make a hash and hash the message with the padding and iv
+            h = SHA256.new()
+            h.update(encoded_msg)
+            signer = PKCS1_v1_5.new(privkey)
+            # sign and encrypt the message; encrypted signature is 344 char long
+            signature = signer.sign(h)
+            signature_enc = str(base64.b64encode(signature))
+            
+            # append signature to front of encoded message
+            encoded_msg = signature_enc + encoded_msg
+            encoded_msg = '0' + encoded_msg
+            # post the message to the conversation
+            self.manager.post_message_to_conversation(encoded_msg)
+            
+                                            
+        elif conv_state == 'CRYPTO':
+            #first the nonce is received so the message has +1 in front of it
+            #end it to incoming message and send back the master key encrypted with public key of person
+            #then receive master key and decrypt it 
+            #master key is already signed with the digital signature
+            #other user must send nonce
+            #if a nonce is received go to incoming message which will
+            #actually send the message
+            if msg_raw[0] == '1':
+                m = Message(
+                    owner_name=self.manager.user_name,
+                    content=msg_raw
+                )
+                self.printed_messages.append(m)
+                self.manager.post_message_to_conversation(msg_raw)
+                #post message to conversation here
+            #if nonce was not received in the crypto phase send error
+            else:
+                pass              
+                
+                                           
+
+                                           
+            
+
 
     def print_message(self, msg_raw, owner_str):
         '''

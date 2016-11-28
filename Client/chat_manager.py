@@ -344,6 +344,7 @@ class ChatManager:
                         req.add_header("Cookie", self.cookie)
                         r = urllib2.urlopen(req)
                         self.current_conversation = Conversation(conversation_id, self)
+                        state = IN_CONVERSATION
                         self.current_conversation.setup_conversation()
                     except urllib2.HTTPError as e:
                         print "Unable to determine validity of conversation ID, server returned HTTP", e.code, e.msg
